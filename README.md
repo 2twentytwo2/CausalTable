@@ -54,21 +54,16 @@ must, else the sample is dropped.
                               ▼
                    Causal fine-grained RL
         group = rollouts on factual + CF images (same question)
-        A_i  = (R_i − μ_group) / σ_group  +  λ · Δ_cf
-        R    = R_ans(current-image GT) + α·R_loc + β·R_fmt
                               │
                               ▼
               ┌───────────────┴────────────────┐
               ▼                                ▼
-        internal causal metrics              external benchmarks
-     (follow / stale / echo rates)      (MMTab · TableVista · McNemar)
+            MMTab                         TableVista
 ```
 
 Key design decisions:
 
-- **Within-group causal normalization** — factual and counterfactual
-  rollouts share a group, so correctness is credited *for the image actually
-  seen*, not against a fixed answer.
+
 - **Between-condition contrast** — the group-mean reward gap
   (factual − counterfactual) is injected into the advantage with weight λ,
   sharpening the causal signal across conditions.
@@ -81,38 +76,12 @@ Key design decisions:
 
 ## 4. Evaluation Protocol
 
-1. **Follow / Invariance / Echo** (probe, training-free, any VLM):
-   - *follow* — output matches post-intervention GT;
-   - *invariance* — output unchanged vs. the model's own factual output
-     (behavioral inertia);
-   - *echo* — output equals the *factual gold* mapped into the CF image
-     (prior fingerprint; echoing ⇒ the model did not read the current image).
-2. **Internal causal metrics**: factual accuracy, counterfactual sensitivity
-   (follow/stale/other), per-intervention-type and per-shift breakdowns.
-3. **External generalization**: MMTab (8 sub-datasets) and TableVista with
+1. **External generalization**: MMTab (8 sub-datasets) and TableVista with
    paired McNemar significance tests; perturbation-retention on
    answer-preserving shuffles.
 4. **Evidence grounding**: critical-cell exact / ±1-cell tolerant hit rates,
    and box-IoU audits for coordinate-emitting models.
 
-## 5. Findings (summary)
-
-- Counterfactual sensitivity on the **answer** dimension is largely a
-  property of the base VLM; RL neither creates nor destroys it — echoing is
-  near zero even before training.
-- The real bottleneck is **evidence localization**: cell-exact hit rates sit
-  near the floor across model families, while ±1-cell tolerance recovers
-  several-fold — cell-level evaluation should use tolerant metrics.
-- The **injection position** of the counterfactual signal (reward /
-  advantage / gate / paired) is statistically indistinguishable under matched
-  budgets — the mechanism, not its placement, carries the effect.
-- SFT-style grounding transfers poorly **across rendering domains**,
-  motivating in-domain RL localization rewards.
-- Format following and perception fully decouple in legacy 7B VLMs: perfect
-  output format with degenerate default coordinates.
-
-Exact numbers, ablation tables, and significance matrices are in the paper
-(in submission).
 
 ## 6. Repository Layout
 
